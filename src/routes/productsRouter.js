@@ -42,6 +42,12 @@ router.post("/", async (req, res) => {
   try {
     const productData = req.body;
     const newProduct = await productManager.addProduct(productData);
+    
+    // Emitir evento de socket para actualización en tiempo real
+    const io = req.app.get("io");
+    const products = await productManager.getProducts();
+    io.emit("updateProducts", products);
+    
     res.status(201).json(newProduct);
   } catch (error) {
     console.error("Error al agregar producto:", error);
@@ -77,6 +83,11 @@ router.delete("/:id", async (req, res) => {
     if (!deleted) {
       return res.status(404).json({ error: "Producto no encontrado" });
     }
+
+    // Emitir evento de socket para actualización en tiempo real
+    const io = req.app.get("io");
+    const products = await productManager.getProducts();
+    io.emit("updateProducts", products);
 
     res.json({ message: "Producto eliminado correctamente" });
   } catch (error) {

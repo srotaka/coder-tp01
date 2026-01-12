@@ -7,10 +7,7 @@
     "price": 1499.99,
     "status": true,
     "stock": 15,
-    "category": "Laptops",
-    "thumbnails": [
-      "nitro5-teclado.jpg"
-    ]
+    "category": "Laptops"
   },
   {
     "id": 2,
@@ -20,10 +17,7 @@
     "price": 349.5,
     "status": true,
     "stock": 35,
-    "category": "Monitores",
-    "thumbnails": [
-      "odyssey-g5.jpg"
-    ]
+    "category": "Monitores"
   },
   {
     "id": 3,
@@ -33,10 +27,7 @@
     "price": 89.9,
     "status": true,
     "stock": 120,
-    "category": "Periféricos",
-    "thumbnails": [
-      "k870t-rgb.jpg"
-    ]
+    "category": "Periféricos"
   },
   {
     "id": 4,
@@ -46,10 +37,7 @@
     "price": 119.99,
     "status": true,
     "stock": 250,
-    "category": "Periféricos",
-    "thumbnails": [
-      "mx-master-3s.jpg"
-    ]
+    "category": "Periféricos"
   },
   {
     "id": 5,
@@ -59,10 +47,7 @@
     "price": 75,
     "status": true,
     "stock": 85,
-    "category": "Almacenamiento",
-    "thumbnails": [
-      "wd-sn770.jpg"
-    ]
+    "category": "Almacenamiento"
   },
   {
     "id": 6,
@@ -72,10 +57,7 @@
     "price": 199,
     "status": true,
     "stock": 500,
-    "category": "Software",
-    "thumbnails": [
-      "win11-logo.jpg"
-    ]
+    "category": "Software"
   },
   {
     "id": 7,
@@ -85,10 +67,7 @@
     "price": 95.25,
     "status": true,
     "stock": 60,
-    "category": "Redes",
-    "thumbnails": [
-      "archer-ax55.jpg"
-    ]
+    "category": "Redes"
   },
   {
     "id": 8,
@@ -98,10 +77,7 @@
     "price": 69.99,
     "status": true,
     "stock": 150,
-    "category": "Periféricos",
-    "thumbnails": [
-      "c920-pro.jpg"
-    ]
+    "category": "Periféricos"
   },
   {
     "id": 9,
@@ -111,10 +87,7 @@
     "price": 55.8,
     "status": true,
     "stock": 95,
-    "category": "Componentes",
-    "thumbnails": [
-      "fury-beast-ddr4.jpg"
-    ]
+    "category": "Componentes"
   },
   {
     "id": 10,
@@ -124,9 +97,16 @@
     "price": 1150,
     "status": true,
     "stock": 25,
-    "category": "Mobiliario",
-    "thumbnails": [
-      "silla-gamer-g01.jpg"
-    ]
+    "category": "Mobiliario"
+  },
+  {
+    "id": 11,
+    "title": "Teclado Mecánico Redragon",
+    "description": "Teclado mecánico RGB switches azules",
+    "code": "TEC-RED-001",
+    "price": 59.99,
+    "status": true,
+    "stock": 8,
+    "category": "Periféricos"
   }
 ]
