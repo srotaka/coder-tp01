@@ -44,7 +44,6 @@ class ProductManager {
       status = true,
       stock,
       category,
-      thumbnails = [],
     } = productData;
 
     if (
@@ -78,7 +77,6 @@ class ProductManager {
       status,
       stock,
       category,
-      thumbnails,
     };
 
     products.push(newProduct);
