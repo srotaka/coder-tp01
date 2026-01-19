@@ -1,11 +1,15 @@
 import express from "express";
 import path from "path";
+import { fileURLToPath } from "url";
 import CartManager from "../managers/CartManager.js";
 import ProductManager from "../managers/ProductManager.js";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const router = express.Router();
-const cartsFilePath = path.resolve("data/carts.json");
-const productsFilePath = path.resolve("data/products.json");
+const cartsFilePath = path.join(__dirname, "../../data/carts.json");
+const productsFilePath = path.join(__dirname, "../../data/products.json");
 
 const cartManager = new CartManager(cartsFilePath);
 const productManager = new ProductManager(productsFilePath);
