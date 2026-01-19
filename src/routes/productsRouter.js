@@ -1,10 +1,14 @@
 import express from "express";
 import path from "path";
+import { fileURLToPath } from "url";
 import ProductManager from "../managers/ProductManager.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-const productsFilePath = path.resolve("data/products.json");
+const productsFilePath = path.join(__dirname, "../../data/products.json");
 const productManager = new ProductManager(productsFilePath);
 
 // GET /api/products
