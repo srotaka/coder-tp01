@@ -1,28 +1,256 @@
 <h1 class="text-center mb-4">{{title}}</h1>
 
-{{#if products.length}}
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-    {{#each products}}
-    <div class="col">
-        <div class="card h-100 shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title text-primary">{{this.title}}</h5>
-                <p class="card-text text-muted">{{this.description}}</p>
-                <ul class="list-unstyled">
-                    <li><strong>Código:</strong> {{this.code}}</li>
-                    <li><strong>Categoría:</strong> {{this.category}}</li>
-                    <li class="mt-2"><h4 class="text-success">${{this.price}}</h4></li>
-                </ul>
-                <span class="badge {{#if (eq this.stock 0)}}bg-danger{{else}}{{#if (lt this.stock 10)}}bg-warning{{else}}bg-success{{/if}}{{/if}}">
-                    Stock: {{this.stock}}
-                </span>
-            </div>
-        </div>
+<!-- Contenedor de productos -->
+<div id="productsContainer"></div>
+
+<!-- Controles de filtrado y paginación -->
+<div class="d-flex justify-content-center align-items-center mt-3 mb-4 gap-3 flex-wrap">
+    <div class="d-flex align-items-center">
+        <label class="me-2">Filtrar</label>
+        <select id="filterSelect" class="form-select form-select-sm" style="width:180px">
+            <option value="">Todos los productos</option>
+            <option value="available">Solo disponibles</option>
+            <optgroup label="Categorías">
+                {{#each categories}}
+                <option value="{{this}}">{{this}}</option>
+                {{/each}}
+            </optgroup>
+        </select>
     </div>
-    {{/each}}
+
+    <div class="d-flex align-items-center">
+        <label class="me-2">Mostrar</label>
+        <select id="limitSelect" class="form-select form-select-sm" style="width:100px">
+            {{#each limitOptions}}
+                <option value="{{this}}">{{this}}</option>
+            {{/each}}
+        </select>
+    </div>
+
+    <div class="d-flex align-items-center">
+        <label class="me-2">Ordenar por precio</label>
+        <select id="sortSelect" class="form-select form-select-sm" style="width:150px">
+            <option value="">Sin orden</option>
+            <option value="asc">Menor a mayor</option>
+            <option value="desc">Mayor a menor</option>
+        </select>
+    </div>
 </div>
-{{else}}
-<div class="alert alert-info text-center mt-5" role="alert">
-    <i class="bi bi-info-circle-fill"></i> No hay productos disponibles
+
+<!-- Paginación -->
+<nav aria-label="Page navigation" class="mt-4" id="paginationContainer"></nav>
+
+<!-- Notificación -->
+<div id="cartToast" style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: none;">
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill"></i> <span id="toastMessage">Producto agregado al carrito</span>
+        <button type="button" class="btn-close" onclick="document.getElementById('cartToast').style.display='none'"></button>
+    </div>
 </div>
-{{/if}}
+
+<script>
+const cartIdGlobal = '{{cartId}}';
+let currentPage = 1;
+let currentLimit = 10;
+let currentSort = '';
+let currentQuery = '';
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (cartIdGlobal && typeof window.setCartId === 'function') {
+        window.setCartId(cartIdGlobal);
+    }
+    
+    // Parámetros de la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    currentPage = parseInt(urlParams.get('page')) || 1;
+    currentLimit = parseInt(urlParams.get('limit')) || 10;
+    currentSort = urlParams.get('sort') || '';
+    currentQuery = urlParams.get('query') || '';
+    
+    // Establecer valores en los selectores
+    document.getElementById('limitSelect').value = currentLimit;
+    document.getElementById('sortSelect').value = currentSort;
+    document.getElementById('filterSelect').value = currentQuery;
+    
+    document.getElementById('filterSelect').addEventListener('change', (e) => {
+        currentQuery = e.target.value;
+        currentPage = 1;
+        loadProducts();
+    });
+    
+    document.getElementById('limitSelect').addEventListener('change', (e) => {
+        currentLimit = e.target.value;
+        currentPage = 1;
+        loadProducts();
+    });
+    
+    document.getElementById('sortSelect').addEventListener('change', (e) => {
+        currentSort = e.target.value;
+        currentPage = 1;
+        loadProducts();
+    });
+    
+    // Cargar productos iniciales
+    loadProducts();
+});
+
+async function loadProducts() {
+    try {
+        // Construir URL con parámetros
+        const params = new URLSearchParams();
+        params.set('page', currentPage);
+        params.set('limit', currentLimit);
+        if (currentSort) params.set('sort', currentSort);
+        if (currentQuery) params.set('query', currentQuery);
+        
+        const response = await fetch(`/api/products?${params.toString()}`);
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            renderProducts(data.payload);
+            renderPagination(data);
+            updateURL();
+        }
+    } catch (error) {
+        console.error('Error al cargar productos:', error);
+        document.getElementById('productsContainer').innerHTML = `
+            <div class="alert alert-danger text-center mt-5" role="alert">
+                <i class="bi bi-exclamation-triangle-fill"></i> Error al cargar productos
+            </div>
+        `;
+    }
+}
+
+function renderProducts(products) {
+    const container = document.getElementById('productsContainer');
+    
+    if (!products || products.length === 0) {
+        container.innerHTML = `
+            <div class="alert alert-info text-center mt-5" role="alert">
+                <i class="bi bi-info-circle-fill"></i> No hay productos disponibles
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-3">
+            ${products.map(product => `
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body d-flex flex-column">
+                            <h6 class="card-title text-primary mb-2">${product.title}</h6>
+                            <p class="card-text text-muted small mb-auto" style="font-size: 0.85rem;">${product.description.length > 60 ? product.description.substring(0, 60) + '...' : product.description}</p>
+                            <div class="mt-3">
+                                <div class="mb-2">
+                                    <small><strong>Categoría:</strong> ${product.category}</small>
+                                </div>
+                                <h5 class="mb-2">$${Number(product.price).toFixed(2)}</h5>
+                                <span class="badge ${product.stock === 0 ? 'bg-danger' : product.stock < 10 ? 'bg-warning' : 'bg-success'} mb-3">
+                                    Stock: ${product.stock}
+                                </span>
+                                <div class="d-grid gap-1">
+                                    <a href="/products/${product.id}" class="btn btn-outline-primary btn-sm">Ver detalle</a>
+                                    <button class="btn btn-primary btn-sm" onclick="addToCart('${product.id}')" ${product.stock === 0 ? 'disabled' : ''}>
+                                        ${product.stock === 0 ? 'Sin stock' : 'Agregar al carrito'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderPagination(data) {
+    const container = document.getElementById('paginationContainer');
+    
+    if (data.totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    const pages = Array.from({ length: data.totalPages }, (_, i) => i + 1);
+    
+    container.innerHTML = `
+        <ul class="pagination justify-content-center">
+            ${data.hasPrevPage ? `
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="goToPage(${data.prevPage}); return false;">«</a>
+                </li>
+            ` : ''}
+            
+            ${pages.map(page => `
+                <li class="page-item ${page === data.page ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="goToPage(${page}); return false;">${page}</a>
+                </li>
+            `).join('')}
+            
+            ${data.hasNextPage ? `
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="goToPage(${data.nextPage}); return false;">»</a>
+                </li>
+            ` : ''}
+        </ul>
+    `;
+}
+
+function goToPage(page) {
+    currentPage = page;
+    loadProducts();
+}
+
+function updateURL() {
+    const params = new URLSearchParams();
+    params.set('page', currentPage);
+    params.set('limit', currentLimit);
+    if (currentSort) params.set('sort', currentSort);
+    if (currentQuery) params.set('query', currentQuery);
+    
+    const newURL = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({}, '', newURL);
+}
+
+async function addToCart(productId) {
+    try {
+        const response = await fetch(`/api/carts/${cartIdGlobal}/product`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ productId, quantity: 1 })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            const toast = document.getElementById('cartToast');
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+            
+            if (typeof window.updateCartBadge === 'function') {
+                window.updateCartBadge();
+            }
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.error || 'No se pudo agregar al carrito',
+                confirmButtonColor: '#ee4eb0'
+            });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Error al agregar producto al carrito',
+            confirmButtonColor: '#ee4eb0'
+        });
+    }
+}
+</script>

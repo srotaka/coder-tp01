@@ -1,0 +1,241 @@
+<div class="container mt-4">
+  {{#if error}}
+    <div class="alert alert-danger">{{error}}</div>
+  {{else}}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1>Mi Carrito</h1>
+      <div>
+        {{#if products.length}}
+          <button class="btn btn-outline-danger me-2" onclick="clearCart()">
+            <i class="bi bi-trash"></i> Vaciar carrito
+          </button>
+        {{/if}}
+        <a href="/products" class="btn btn-outline-primary">Continuar comprando</a>
+      </div>
+    </div>
+
+    {{#if warningMessage}}
+      <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i> {{warningMessage}}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {{/if}}
+
+    {{#if products.length}}
+      <div class="card">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Precio</th>
+                  <th>Cantidad</th>
+                  <th>Subtotal</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="cartItems">
+                {{#each products}}
+                  <tr data-product-id="{{this.product._id}}">
+                    <td>
+                      <div>
+                        <strong>{{this.product.title}}</strong>
+                        <div class="text-muted small">{{this.product.category}}</div>
+                      </div>
+                    </td>
+                    <td>${{formatPrice this.product.price}}</td>
+                    <td>
+                      <div class="input-group" style="width: 150px;">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="updateQuantity('{{this.product._id}}', {{this.quantity}}, -1)">-</button>
+                        <input type="number" class="form-control form-control-sm text-center qty-input" value="{{this.quantity}}" min="1" id="qty-{{this.product._id}}" onchange="updateQuantityDirect('{{this.product._id}}', this.value)">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="updateQuantity('{{this.product._id}}', {{this.quantity}}, 1)">+</button>
+                      </div>
+                    </td>
+                    <td class="fw-bold">${{multiply this.product.price this.quantity}}</td>
+                    <td>
+                      <button class="btn btn-danger btn-sm" onclick="removeFromCart('{{this.product._id}}')">
+                        <i class="bi bi-trash"></i> Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                {{/each}}
+              </tbody>
+              <tfoot>
+                <tr class="table-light">
+                  <td colspan="3" class="text-end fw-bold">Total:</td>
+                  <td class="fw-bold fs-5" id="totalPrice">${{totalPrice}}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    {{else}}
+      <div class="alert alert-info text-center">
+        <i class="bi bi-cart-x"></i> El carrito está vacío
+      </div>
+    {{/if}}
+  {{/if}}
+</div>
+
+<script>
+const cartId = '{{id}}';
+
+async function updateQuantity(productId, currentQty, change) {
+    const newQty = currentQty + change;
+    if (newQty < 1) return;
+
+    try {
+        const response = await fetch(`/api/carts/${cartId}/products/${productId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quantity: newQty })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            setTimeout(() => location.reload(), 500);
+        } else {
+            await Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.error || 'No se pudo actualizar',
+                confirmButtonColor: '#ee4eb0'
+            });
+            setTimeout(() => location.reload(), 500);
+        }
+    } catch (error) {
+        console.error('Error completo:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Error al actualizar cantidad: ' + error.message,
+            confirmButtonColor: '#ee4eb0'
+        });
+        setTimeout(() => location.reload(), 500);
+    }
+}
+
+async function updateQuantityDirect(productId, newQty) {
+    const quantity = parseInt(newQty, 10);
+    
+    if (isNaN(quantity) || quantity < 1) {
+        await Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'La cantidad debe ser al menos 1',
+            confirmButtonColor: '#ee4eb0'
+        });
+        setTimeout(() => location.reload(), 500);
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/carts/${cartId}/products/${productId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quantity })
+        });
+
+        if (response.ok) {
+            setTimeout(() => location.reload(), 500);
+        } else {
+            const data = await response.json();
+            await Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.error || 'No se pudo actualizar',
+                confirmButtonColor: '#ee4eb0'
+            });
+            setTimeout(() => location.reload(), 500);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Error al actualizar cantidad',
+            confirmButtonColor: '#ee4eb0'
+        });
+        setTimeout(() => location.reload(), 500);
+    }
+}
+
+async function removeFromCart(productId) {
+    const result = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: '¿Deseas eliminar este producto del carrito?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const response = await fetch(`/api/carts/${cartId}/products/${productId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            setTimeout(() => location.reload(), 500);
+        } else {
+            const data = await response.json();
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+async function clearCart() {
+    const result = await Swal.fire({
+        title: '¿Vaciar todo el carrito?',
+        text: '¿Deseas eliminar todos los productos del carrito?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, vaciar todo',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const response = await fetch(`/api/carts/${cartId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Carrito vaciado',
+                text: 'Todos los productos han sido eliminados',
+                confirmButtonColor: '#ee4eb0'
+            }).then(() => location.reload());
+        } else {
+            const data = await response.json();
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.error || 'No se pudo vaciar el carrito',
+                confirmButtonColor: '#ee4eb0'
+            });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Error al vaciar el carrito',
+            confirmButtonColor: '#ee4eb0'
+        });
+    }
+}
+</script>

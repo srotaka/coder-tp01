@@ -1,0 +1,84 @@
+body {
+    background: linear-gradient(135deg, #ee97ee 0%, #ee4eb0 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.main-container {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    padding: 30px;
+}
+
+.navbar-custom {
+    background: linear-gradient(135deg, #c0bec0 0%, #616061 100%);
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #ee4eb0;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+
+.footer {
+    margin-top: 50px;
+    padding-top: 30px;
+    border-top: 2px solid #e0e0e0;
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.footer .heart {
+    color: #ee4eb0;
+    animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.footer a {
+    color: #ee4eb0;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+}
+
+.cart-icon {
+    position: relative;
+    font-size: 1.5rem;
+}
+
+.cart-badge {
+    position: absolute;
+    top: -8px;
+    right: -10px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+/* Ocultar flechas del input number en el carrito */
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.qty-input[type=number] {
+    -moz-appearance: textfield;
+}

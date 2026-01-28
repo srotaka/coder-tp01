@@ -5,7 +5,7 @@
 <!-- Formulario de agregar producto -->
 <div class="card mb-4 shadow-sm">
     <div class="card-header bg-primary text-white">
-        <h5 class="mb-0"><i class="bi bi-plus-circle-fill"></i> Agregar Nuevo Producto</h5>
+        <h5 class="mb-0"><i class="bi bi-bag-plus-fill"></i> Agregar Nuevo Producto</h5>
     </div>
     <div class="card-body">
         <form id="addProductForm">
@@ -15,8 +15,17 @@
                     <input type="text" class="form-control" name="title" required>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Código</label>
-                    <input type="text" class="form-control" name="code" required>
+                    <label class="form-label">Categoría</label>
+                    <select class="form-select" name="category" required>
+                        <option value="">Selecciona una categoría</option>
+                        {{#if categories}}
+                            {{#each categories}}
+                            <option value="{{this}}">{{this}}</option>
+                            {{/each}}
+                        {{else}}
+                            <option disabled>No hay categorías disponibles</option>
+                        {{/if}}
+                    </select>
                 </div>
             </div>
             
@@ -26,22 +35,18 @@
             </div>
             
             <div class="row mb-3">
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label">Precio</label>
                     <input type="number" class="form-control" name="price" step="0.01" required>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label">Stock</label>
                     <input type="number" class="form-control" name="stock" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Categoría</label>
-                    <input type="text" class="form-control" name="category" required>
                 </div>
             </div>
             
             <button type="submit" class="btn btn-primary">
-                <i class="bi bi-save-fill"></i> Agregar Producto
+                <i class="bi bi-floppy-fill"></i> Agregar Producto
             </button>
         </form>
     </div>
@@ -54,7 +59,7 @@
     </div>
     <div class="card-body">
         <div class="input-group">
-            <input type="number" class="form-control" id="deleteId" placeholder="ID del producto">
+            <input type="text" class="form-control" id="deleteId" placeholder="ID del producto">
             <button class="btn btn-danger" onclick="deleteProduct()">
                 <i class="bi bi-trash"></i> Eliminar
             </button>
@@ -62,15 +67,73 @@
     </div>
 </div>
 
-<!-- Lista de productos cargados dinámicamente-->
-<div id="productsContainer">
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="productsList">        
+<!-- Lista de productos -->
+<div class="card shadow-sm">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Lista de Productos</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+            <table class="table table-hover table-sm mb-0" id="productsTable">
+                <thead class="table-light sticky-top">
+                    <tr>
+                        <th style="width: 200px;">ID</th>
+                        <th>Título</th>
+                        <th>Categoría</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th style="width: 100px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="productsList">
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+
+<!-- Filtrado, ordenamiento y opciones de paginación -->
+<div class="d-flex justify-content-center align-items-center mt-4 mb-4 gap-3 flex-wrap">
+    <div class="d-flex align-items-center">
+        <label class="me-2">Filtrar por categoría</label>
+        <select id="filterSelect" class="form-select form-select-sm" style="width:180px">
+            <option value="">Todas las categorías</option>
+            {{#each categories}}
+            <option value="{{this}}">{{this}}</option>
+            {{/each}}
+        </select>
+    </div>
+
+    <div class="d-flex align-items-center">
+        <label class="me-2">Mostrar</label>
+        <select id="limitSelect" class="form-select form-select-sm" style="width:100px">
+            {{#each limitOptions}}
+                <option value="{{this}}">{{this}}</option>
+            {{/each}}
+        </select>
+    </div>
+
+    <div class="d-flex align-items-center">
+        <label class="me-2">Ordenar por precio</label>
+        <select id="sortSelect" class="form-select form-select-sm" style="width:150px">
+            <option value="">Sin orden</option>
+            <option value="asc">Menor a mayor</option>
+            <option value="desc">Mayor a menor</option>
+        </select>
+    </div>
+</div>
+
+<!-- Paginación -->
+<nav aria-label="Page navigation" class="mt-4" id="paginationContainer"></nav>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
+    
+    let currentPage = 1;
+    let currentLimit = 10;
+    let currentSort = '';
+    let currentQuery = '';
     
     // Mensaje de estado
     function showMessage(message, type) {
@@ -88,58 +151,159 @@
         }, 3000);
     }
     
-    // Renderización de productos
+    // Renderización de productos en tabla
     function renderProducts(products) {
         const productsList = document.getElementById('productsList');
         
         if (!products || products.length === 0) {
             productsList.innerHTML = `
-                <div class="col-12">
-                    <div class="alert alert-info text-center" role="alert">
-                        <i class="bi bi-info-circle-fill"></i> No hay productos disponibles
-                    </div>
-                </div>
+                <tr>
+                    <td colspan="7" class="text-center py-4">
+                        <div class="alert alert-info mb-0" role="alert">
+                            <i class="bi bi-info-circle-fill"></i> No hay productos disponibles
+                        </div>
+                    </td>
+                </tr>
             `;
             return;
         }
         
+        // Colores de categorías
+        const categoryColors = {
+            'Almacenamiento': '#4A90E2',
+            'Audio': '#50C878',
+            'Cámaras': '#9B59B6',
+            'Componentes': '#E74C3C',
+            'Energía': '#F39C12',
+            'Gaming': '#E91E63',
+            'Impresoras': '#34495E',
+            'Laptops': '#3498DB',
+            'Mobiliario': '#95A5A6',
+            'Monitores': '#1ABC9C',
+            'Periféricos': '#FF6B6B',
+            'Redes': '#16A085',
+            'Smartphones': '#8E44AD',
+            'Software': '#2ECC71',
+            'Tablets': '#E67E22'
+        };
+        
         productsList.innerHTML = products.map(product => {
-            const stockClass = product.stock === 0 ? 'bg-danger' : product.stock < 10 ? 'bg-warning' : 'bg-success';
+            const stockClass = product.stock === 0 ? 'danger' : product.stock < 10 ? 'warning' : 'success';
+            const stockIcon = product.stock === 0 ? 'x-circle' : product.stock < 10 ? 'exclamation-triangle' : 'check-circle';
+            const categoryColor = categoryColors[product.category] || '#6c757d';
             
             return `
-                <div class="col">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h5 class="card-title text-primary">${product.title}</h5>
-                                <span class="badge bg-primary">ID: ${product.id}</span>
-                            </div>
-                            <p class="card-text text-muted">${product.description}</p>
-                            <ul class="list-unstyled">
-                                <li><strong>Código:</strong> ${product.code}</li>
-                                <li><strong>Categoría:</strong> ${product.category}</li>
-                                <li class="mt-2"><h4 class="text-success">$${product.price}</h4></li>
-                            </ul>
-                            <span class="badge ${stockClass}">Stock: ${product.stock}</span>
-                        </div>
-                    </div>
-                </div>
+                <tr>
+                    <td class="small font-monospace">${product.id}</td>
+                    <td>
+                        <strong>${product.title}</strong>
+                        <div class="small text-muted">${product.description.substring(0, 60)}${product.description.length > 60 ? '...' : ''}</div>
+                    </td>
+                    <td><span class="badge" style="background-color: ${categoryColor}; color: white;">${product.category}</span></td>
+                    <td class="fw-bold text-success">$${Number(product.price).toFixed(2)}</td>
+                    <td>
+                        <span class="badge bg-${stockClass}">
+                            <i class="bi bi-${stockIcon}"></i> ${product.stock}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="deleteProduct('${product.id}')" title="Eliminar">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
             `;
         }).join('');
     }
     
-    // Escuchar actualizaciones de productos
     socket.on('updateProducts', (products) => {
-        renderProducts(products);
+        loadProducts();
     });
     
     // Carga de productos iniciales
-    fetch('/api/products')
-        .then(res => res.json())
-        .then(products => renderProducts(products))
-        .catch(err => console.error('Error al cargar productos:', err));
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('limitSelect').value = currentLimit;
+        
+        document.getElementById('filterSelect').addEventListener('change', (e) => {
+            currentQuery = e.target.value;
+            currentPage = 1;
+            loadProducts();
+        });
+        
+        document.getElementById('limitSelect').addEventListener('change', (e) => {
+            currentLimit = e.target.value;
+            currentPage = 1;
+            loadProducts();
+        });
+        
+        document.getElementById('sortSelect').addEventListener('change', (e) => {
+            currentSort = e.target.value;
+            currentPage = 1;
+            loadProducts();
+        });
+        
+        loadProducts();
+    });
     
-    // Manejo de formulario de agregar producto
+    async function loadProducts() {
+        try {
+            const params = new URLSearchParams();
+            params.set('page', currentPage);
+            params.set('limit', currentLimit);
+            if (currentSort) params.set('sort', currentSort);
+            if (currentQuery) params.set('query', currentQuery);
+            
+            const response = await fetch(`/api/products?${params.toString()}`);
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                renderProducts(data.payload);
+                renderPagination(data);
+            }
+        } catch (err) {
+            console.error('Error al cargar productos:', err);
+        }
+    }
+    
+    function renderPagination(data) {
+        const container = document.getElementById('paginationContainer');
+        
+        if (data.totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        const pages = Array.from({ length: data.totalPages }, (_, i) => i + 1);
+        
+        container.innerHTML = `
+            <ul class="pagination justify-content-center">
+                ${data.hasPrevPage ? `
+                    <li class="page-item">
+                        <a class="page-link" href="#" onclick="goToPage(${data.prevPage}); return false;">«</a>
+                    </li>
+                ` : ''}
+                
+                ${pages.map(page => `
+                    <li class="page-item ${page === data.page ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="goToPage(${page}); return false;">${page}</a>
+                    </li>
+                `).join('')}
+                
+                ${data.hasNextPage ? `
+                    <li class="page-item">
+                        <a class="page-link" href="#" onclick="goToPage(${data.nextPage}); return false;">»</a>
+                    </li>
+                ` : ''}
+            </ul>
+        `;
+    }
+    
+    function goToPage(page) {
+        currentPage = page;
+        loadProducts();
+    }
+    
+    // Agregar producto
     document.getElementById('addProductForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -147,7 +311,6 @@
         const productData = {
             title: formData.get('title'),
             description: formData.get('description'),
-            code: formData.get('code'),
             price: parseFloat(formData.get('price')),
             stock: parseInt(formData.get('stock')),
             category: formData.get('category'),
@@ -166,6 +329,7 @@
             if (response.ok) {
                 showMessage('¡Producto agregado exitosamente!', 'success');
                 e.target.reset();
+                loadProducts();
             } else {
                 const error = await response.json();
                 showMessage(`Error: ${error.error}`, 'error');
@@ -176,23 +340,45 @@
         }
     });
     
-    // Función para eliminar producto
-    async function deleteProduct() {
-        const id = document.getElementById('deleteId').value;
+    // Eliminar producto
+    async function deleteProduct(productId) {
         
-        if (!id) {
-            showMessage('Por favor ingresa un ID', 'error');
-            return;
+        if (!productId) {
+            productId = document.getElementById('deleteId').value.trim();
         }
         
+        if (!productId) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'ID requerido',
+                text: 'Por favor, ingresa el ID del producto a eliminar',
+                confirmButtonColor: '#ee4eb0'
+            });
+            return;
+        }
+
+        const result = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: `¿Deseas eliminar el producto?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!result.isConfirmed) return;
+        
         try {
-            const response = await fetch(`/api/products/${id}`, {
+            const response = await fetch(`/api/products/${productId}`, {
                 method: 'DELETE'
             });
             
             if (response.ok) {
                 showMessage('¡Producto eliminado exitosamente!', 'success');
                 document.getElementById('deleteId').value = '';
+                loadProducts();
             } else {
                 const error = await response.json();
                 showMessage(`Error: ${error.error}`, 'error');
