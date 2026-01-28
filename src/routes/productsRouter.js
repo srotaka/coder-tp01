@@ -1,24 +1,45 @@
 import express from "express";
-import path from "path";
-import { fileURLToPath } from "url";
 import ProductManager from "../managers/ProductManager.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-const productsFilePath = path.join(__dirname, "../../data/products.json");
-const productManager = new ProductManager(productsFilePath);
+const productManager = new ProductManager();
 
 // GET /api/products
 // Obtener todos los productos
 router.get("/", async (req, res) => {
   try {
-    const products = await productManager.getProducts();
-    res.json(products);
+    const { limit = 10, page = 1, sort, query } = req.query;
+    const result = await productManager.getProducts({ limit, page, sort, query });
+
+    const pageNum = result.page;
+    const totalPages = result.totalPages;
+
+    const hasPrevPage = result.hasPrevPage;
+    const hasNextPage = result.hasNextPage;
+
+    const buildLink = (newPage) => {
+      if (!newPage) return null;
+      const url = new URL(req.protocol + "://" + req.get("host") + req.baseUrl + req.path);
+      const params = new URLSearchParams(req.query);
+      params.set("page", String(newPage));
+      url.search = params.toString();
+      return url.toString();
+    };
+
+    res.json({
+      status: "success",
+      payload: result.docs,
+      totalPages,
+      prevPage: hasPrevPage ? pageNum - 1 : null,
+      nextPage: hasNextPage ? pageNum + 1 : null,
+      page: pageNum,
+      hasPrevPage,
+      hasNextPage,
+      prevLink: hasPrevPage ? buildLink(pageNum - 1) : null,
+      nextLink: hasNextPage ? buildLink(pageNum + 1) : null,
+    });
   } catch (error) {
-    console.error("Error al obtener productos:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
@@ -35,7 +56,6 @@ router.get("/:id", async (req, res) => {
 
     res.json(product);
   } catch (error) {
-    console.error("Error al obtener producto:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
@@ -47,14 +67,12 @@ router.post("/", async (req, res) => {
     const productData = req.body;
     const newProduct = await productManager.addProduct(productData);
     
-    // Emitir evento de socket para actualización en tiempo real
     const io = req.app.get("io");
-    const products = await productManager.getProducts();
-    io.emit("updateProducts", products);
+    const result = await productManager.getProducts({ limit: 1000, page: 1 });
+    io.emit("updateProducts", result.docs || result);
     
     res.status(201).json(newProduct);
   } catch (error) {
-    console.error("Error al agregar producto:", error);
     res.status(400).json({ error: error.message });
   }
 });
@@ -73,7 +91,6 @@ router.put("/:id", async (req, res) => {
 
     res.json(updatedProduct);
   } catch (error) {
-    console.error("Error al actualizar producto:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });
@@ -90,12 +107,11 @@ router.delete("/:id", async (req, res) => {
 
     // Emitir evento de socket para actualización en tiempo real
     const io = req.app.get("io");
-    const products = await productManager.getProducts();
-    io.emit("updateProducts", products);
+    const result = await productManager.getProducts({ limit: 1000, page: 1 });
+    io.emit("updateProducts", result.docs || result);
 
     res.json({ message: "Producto eliminado correctamente" });
   } catch (error) {
-    console.error("Error al eliminar producto:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 });

@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import { engine } from "express-handlebars";
 import { Server } from "socket.io";
 import { createServer } from "http";
@@ -24,7 +25,16 @@ const io = new Server(httpServer);
 app.engine("handlebars", engine({
   helpers: {
     eq: (a, b) => a === b,
-    lt: (a, b) => a < b
+    lt: (a, b) => a < b,
+    multiply: (a, b) => (a * b).toFixed(2),
+    formatPrice: (price) => Number(price).toFixed(2),
+    ifEquals: function(a, b, options) {
+      if (String(a) === String(b)) {
+        return options.fn(this);
+      } else {
+        return options.inverse(this);
+      }
+    }
   }
 }));
 app.set("view engine", "handlebars");
@@ -37,6 +47,13 @@ app.use(express.static(path.join(__dirname, "../public")));
 
 // Hacer io accesible en las rutas
 app.set("io", io);
+
+// Conectar a MongoDB Atlas
+const MONGO_URI = "mongodb+srv://admin:admin1234@coderhousecluster.uuriwsh.mongodb.net/?appName=CoderhouseCluster";
+mongoose
+  .connect(MONGO_URI)
+  .then(() => console.log("Conectado a MongoDB Atlas"))
+  .catch((err) => console.error("Error conectando a MongoDB:", err));
 
 // Rutas API
 app.use("/api/products", productsRouter);

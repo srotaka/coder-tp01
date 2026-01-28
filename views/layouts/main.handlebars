@@ -3,34 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{title}}</title>
+    <title>Coderhouse Store by Sil</title>
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <style>
-        body {
-            background: linear-gradient(135deg, #ee97ee 0%, #ee4eb0 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .main-container {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            padding: 30px;
-        }
-        
-        .navbar-custom {
-            background: linear-gradient(135deg, #c0bec0 0%, #616061 100%);
-            border-radius: 10px;
-            margin-bottom: 30px;
-        }
-        
-        h1 {
-            color: #ee4eb0;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-        }
-    </style>
+    <link rel="stylesheet" href="/css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
     <div class="container">
@@ -41,12 +19,94 @@
                     <div class="navbar-nav ms-auto">
                         <a class="nav-link" href="/"><i class="bi bi-grid-fill"></i> Home</a>
                         <a class="nav-link" href="/realTimeProducts"><i class="bi bi-gear-fill"></i> Real Time Products</a>
+                        <a class="nav-link" href="javascript:void(0);" id="cartLink" onclick="goToCart()">
+                            <span class="cart-icon">
+                                <i class="bi bi-cart-fill"></i>
+                                <span class="cart-badge" id="cartBadge">0</span>
+                            </span>
+                        </a>
                     </div>
                 </div>
             </nav>
             {{{body}}}
+            
+            <!-- Footer -->
+            <footer class="footer">
+                <p class="mb-1">
+                    <strong>Silvia R. Otaka</strong> • 2021 ~ <span id="currentYear"></span> • Made with <span class="heart">❤️</span>
+                </p>
+                <p class="small text-muted mb-0">
+                    Backend I - <a href="https://www.coderhouse.com" target="_blank">Coderhouse</a>
+                </p>
+            </footer>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Establecer año actual en el footer
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+        
+        // Obtener o crear cartId en localStorage
+        let currentCartId = localStorage.getItem('cartId');
+        
+        // Función para ir al carrito
+        window.goToCart = function() {
+            if (currentCartId) {
+                window.location.href = `/carts/${currentCartId}`;
+            } else {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Carrito vacío',
+                    text: 'Aún no tienes un carrito. Agrega algún producto primero.',
+                    confirmButtonColor: '#ee4eb0'
+                });
+            }
+        };
+        
+        // Función para establecer el cartId
+        window.setCartId = function(cartId) {
+            currentCartId = cartId;
+            localStorage.setItem('cartId', cartId);
+            
+            // Actualizar enlace del carrito
+            const cartLink = document.getElementById('cartLink');
+            if (cartLink) {
+                cartLink.href = `/carts/${cartId}`;
+            }
+            updateCartBadge();
+        };
+        
+        // Actualizar badge del carrito
+        window.updateCartBadge = async function() {
+            if (!currentCartId) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/carts/${currentCartId}`);
+                if (response.ok) {
+                    const cart = await response.json();
+                    const totalItems = cart.products.reduce((sum, p) => sum + p.quantity, 0);
+                    const badge = document.getElementById('cartBadge');
+                    if (badge) {
+                        badge.textContent = totalItems;
+                    }
+                }
+            } catch (error) {
+                console.error('Error al actualizar cantidades del carrito:', error);
+            }
+        };
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Si ya existe cartId en localStorage, configurar enlace
+            if (currentCartId) {
+                const cartLink = document.getElementById('cartLink');
+                if (cartLink) {
+                    cartLink.href = `/carts/${currentCartId}`;
+                    cartLink.onclick = null;
+                }
+                updateCartBadge();
+            }
+        });
+    </script>
 </body>
 </html>

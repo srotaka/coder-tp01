@@ -1,0 +1,99 @@
+<div class="container mt-4">
+  {{#if error}}
+    <div class="alert alert-danger">{{error}}</div>
+  {{else}}
+    <h1>{{product.title}}</h1>
+    <p class="text-muted">{{product.description}}</p>
+    <ul>
+      <li><strong>Categoría:</strong> {{product.category}}</li>
+      <li><strong>Precio:</strong> ${{formatPrice product.price}}</li>
+      <li><strong>Stock:</strong> {{product.stock}}</li>
+    </ul>
+
+    <div class="mb-3">
+      <label class="form-label">Cantidad</label>
+      <input type="number" id="quantityInput" value="1" min="1" max="{{product.stock}}" class="form-control" style="width:120px;" {{#if (eq product.stock 0)}}disabled{{/if}} />
+    </div>
+    <button class="btn btn-primary" onclick="addToCart()" {{#if (eq product.stock 0)}}disabled{{/if}}>
+      {{#if (eq product.stock 0)}}Sin stock{{else}}Agregar al carrito{{/if}}
+    </button>
+    <a href="/products" class="btn btn-outline-secondary">Volver a productos</a>
+  {{/if}}
+</div>
+
+<script>
+const cartIdGlobal = '{{cartId}}';
+const productId = '{{product.id}}';
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (cartIdGlobal && typeof window.setCartId === 'function') {
+        window.setCartId(cartIdGlobal);
+    }
+});
+
+async function addToCart() {
+    const quantity = parseInt(document.getElementById('quantityInput').value);
+    const maxStock = parseInt(document.getElementById('quantityInput').max);
+    
+    if (quantity < 1) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'La cantidad debe ser al menos 1',
+            confirmButtonColor: '#ee4eb0'
+        });
+        return;
+    }
+
+    if (quantity > maxStock) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Stock insuficiente',
+            text: `Solo hay ${maxStock} unidades disponibles`,
+            confirmButtonColor: '#ee4eb0'
+        });
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/carts/${cartIdGlobal}/product`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ productId, quantity })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            await Swal.fire({
+                icon: 'success',
+                title: 'Producto agregado',
+                text: `Se agregaron ${quantity} unidad(es) al carrito`,
+                confirmButtonColor: '#ee4eb0',
+                timer: 2000
+            });
+            
+            if (typeof window.updateCartBadge === 'function') {
+                window.updateCartBadge();
+            }
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.error || 'No se pudo agregar al carrito',
+                confirmButtonColor: '#ee4eb0'
+            });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Error al agregar producto al carrito',
+            confirmButtonColor: '#ee4eb0'
+        });
+    }
+}
+</script>
