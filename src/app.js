@@ -5,6 +5,9 @@ import { Server } from "socket.io";
 import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+
+dotenv.config();
 import productsRouter from "./routes/productsRouter.js";
 import cartsRouter from "./routes/cartsRouter.js";
 import viewsRouter from "./routes/viewsRouter.js";
@@ -13,7 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 
 // Crear servidor HTTP
 const httpServer = createServer(app);
@@ -48,11 +51,11 @@ app.use(express.static(path.join(__dirname, "../public")));
 // Hacer io accesible en las rutas
 app.set("io", io);
 
-// Conectar a MongoDB Atlas
-const MONGO_URI = "mongodb+srv://admin:admin1234@coderhousecluster.uuriwsh.mongodb.net/?appName=CoderhouseCluster";
+// Conectar a MongoDB
+const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/ecommerce";
 mongoose
   .connect(MONGO_URI)
-  .then(() => console.log("Conectado a MongoDB Atlas"))
+  .then(() => console.log("Conectado a MongoDB"))
   .catch((err) => console.error("Error conectando a MongoDB:", err));
 
 // Rutas API
